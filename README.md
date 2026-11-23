@@ -68,20 +68,16 @@ que passa pelo Cloudflare). O painel é só a porta de entrada.
 # só neste computador
 python painel.py            # http://127.0.0.1:8000
 
-# publicado na internet com link HTTPS (duplo clique no .bat também funciona)
-python painel_online.py     # imprime o link e abre no navegador
-.\INICIAR_PAINEL_ONLINE.bat # mesma coisa, sem precisar do terminal
+# acesso somente local (duplo clique no .bat)
+.\INICIAR_PAINEL_ONLINE.bat # abre http://127.0.0.1:8000
 ```
 
 - **Acesso:** o painel principal é aberto sem senha.
 - **Login CGD:** cada pessoa informa seu e-mail e senha do CGD no formulário.
   As credenciais são usadas em memória para o job e não são gravadas.
-- **Link público:** `painel_online.py` cria um túnel de saída do Cloudflare
-  (`tools/cloudflared.exe`), sem abrir porta no roteador. O endereço é do tipo
-  `https://algo-algo.trycloudflare.com`, muda a cada execução e só vale
-  enquanto a janela do script estiver aberta (fica anotado em `painel_url.txt`).
-- **Deixar no ar ao ligar o PC:** crie um atalho do `INICIAR_PAINEL_ONLINE.bat`
-  dentro de `shell:startup` (Win+R → `shell:startup`).
+- **Uso interno:** o painel fica disponível somente em
+  `http://127.0.0.1:8000` neste computador.
+- **Abrir pelo Windows:** dê duplo clique em `INICIAR_PAINEL_ONLINE.bat`.
 - **O que a pessoa faz:** digita os nomes (um por linha, até 20), clica em
   *Gerar relatório*, acompanha o status e abre/baixa o HTML e o Excel.
 - **Fila:** um trabalho por vez (o Chrome é único). O histórico fica em
@@ -91,13 +87,11 @@ python painel_online.py     # imprime o link e abre no navegador
   "Sessão do CGD expirada", rode `python cgd_extrator.py` neste PC e entre no
   site; aí os jobs voltam a funcionar.
 
-Enquanto um relatório é gerado, o Chrome abre **na tela deste PC** (é o único
-jeito de passar pelo Cloudflare) — quem está usando o link não vê isso, só o
-status "Gerando…". Cada aluno leva cerca de 1 minuto.
+Enquanto um relatório é gerado, o Chrome abre na tela deste PC para fazer a
+autenticação e coletar os dados. Cada aluno leva cerca de 1 minuto.
 
-⚠️ **LGPD:** os relatórios têm nome, e-mail e notas de menores. Use senha forte,
-compartilhe o link só com quem precisa e feche a janela do `painel_online.py`
-quando terminar (o link morre na hora).
+⚠️ **LGPD:** os relatórios têm nome, e-mail e notas de menores. Não deixe o
+computador público desbloqueado e compartilhe apenas o acesso local permitido.
 
 ## Publicação no GitHub e Vercel
 
