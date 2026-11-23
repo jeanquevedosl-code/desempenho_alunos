@@ -9,6 +9,7 @@ painel_url.txt
 painel_tunnel.pid
 painel_config.json
 painel_jobs.json
+sessoes/
 
 relatorios/
 debug_html/

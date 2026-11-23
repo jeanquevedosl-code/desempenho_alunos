@@ -74,6 +74,8 @@ python painel_online.py     # imprime o link e abre no navegador
 ```
 
 - **Acesso:** o painel principal é aberto sem senha.
+- **Login CGD:** cada pessoa informa seu e-mail e senha do CGD no formulário.
+  As credenciais são usadas em memória para o job e não são gravadas.
 - **Link público:** `painel_online.py` cria um túnel de saída do Cloudflare
   (`tools/cloudflared.exe`), sem abrir porta no roteador. O endereço é do tipo
   `https://algo-algo.trycloudflare.com`, muda a cada execução e só vale

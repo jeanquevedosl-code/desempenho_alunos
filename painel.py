@@ -21,6 +21,8 @@ import subprocess
 import sys
 import threading
 import unicodedata
+import hashlib
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from queue import Queue
@@ -124,6 +126,7 @@ def _cabecalhos(resposta):
 LOCK = threading.Lock()
 FILA: Queue[str] = Queue()
 JOBS: dict[str, dict] = {}
+CREDENTIALS: dict[str, dict[str, str]] = {}
 
 
 def carregar_jobs() -> None:
@@ -173,10 +176,18 @@ def _worker() -> None:
             job["status"] = "erro"
             job["erro"] = "Geração indisponível nesta hospedagem. Use o painel local."
             salvar_jobs()
+            CREDENTIALS.pop(job_id, None)
             FILA.task_done()
             continue
         carimbo = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         saida = RELATORIOS / f"desempenho_{slug(job['nomes'][0])}_{carimbo}.xlsx"
+        credenciais = CREDENTIALS.get(job_id, {})
+        chave_sessao = hashlib.sha256(
+            credenciais.get("email", "").encode("utf-8")
+        ).hexdigest()[:16]
+        pasta_sessoes = BASE / "sessoes"
+        pasta_sessoes.mkdir(parents=True, exist_ok=True)
+        session_file = pasta_sessoes / f"{chave_sessao}.json"
 
         comando = [
             sys.executable,
@@ -185,11 +196,15 @@ def _worker() -> None:
             "--html", "--json",
             "--sem-login-manual",
             "--saida", str(saida),
+            "--session-file", str(session_file),
         ]
 
         log = ""
         sucesso = False
         try:
+            env = os.environ.copy()
+            env["CGD_EMAIL"] = credenciais.get("email", "")
+            env["CGD_SENHA"] = credenciais.get("senha", "")
             resultado = subprocess.run(
                 comando,
                 cwd=str(BASE),
@@ -198,6 +213,7 @@ def _worker() -> None:
                 encoding="utf-8",
                 errors="replace",
                 timeout=TIMEOUT_JOB,
+                env=env,
             )
             log = (resultado.stdout or "") + (resultado.stderr or "")
             sucesso = saida.exists()
@@ -372,6 +388,8 @@ PAINEL_HTML = """<!doctype html>
   <div class="card">
     <h2>Novo relatório</h2>
     <form method="post" action="{{ url_for('gerar') }}">
+      <input type="email" name="cgd_email" placeholder="E-mail do CGD" autocomplete="email" required>
+      <input type="password" name="cgd_senha" placeholder="Senha do CGD" autocomplete="current-password" required>
       <textarea name="nomes" placeholder="Um nome por linha&#10;Ex.:&#10;Pedro Henrique Almeida de Oliveira&#10;Maria Souza Lima">{{ nomes }}</textarea>
       <p class="dica">Aceita até {{ max_nomes }} nomes por vez. Cada aluno leva alguns segundos.</p>
       <button type="submit">Gerar relatório</button>
@@ -598,8 +616,13 @@ def gerar():
     if not nomes:
         return redirect(url_for("painel"))
     nomes = nomes[:MAX_NOMES]
+    cgd_email = (request.form.get("cgd_email") or "").strip()
+    cgd_senha = (request.form.get("cgd_senha") or "").strip()
+    if not cgd_email or not cgd_senha:
+        return redirect(url_for("painel"))
 
     job_id = secrets.token_hex(4)
+    CREDENTIALS[job_id] = {"email": cgd_email, "senha": cgd_senha}
     with LOCK:
         JOBS[job_id] = {
             "id": job_id,

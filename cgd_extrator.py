@@ -21,6 +21,7 @@ import argparse
 import difflib
 import html
 import json
+import os
 import re
 import sys
 import time
@@ -144,7 +145,7 @@ class Curso:
 # Navegador / login
 # ---------------------------------------------------------------------------
 
-def iniciar_navegador(p, headless: bool, lento: int, renovar_sessao: bool):
+def iniciar_navegador(p, headless: bool, lento: int, renovar_sessao: bool, session_file: Path):
     args = ["--disable-blink-features=AutomationControlled", "--start-maximized"]
 
     browser = None
@@ -164,8 +165,8 @@ def iniciar_navegador(p, headless: bool, lento: int, renovar_sessao: bool):
         raise RuntimeError(f"Não foi possível abrir o navegador: {ultimo_erro}")
 
     contexto_opcoes = {}
-    if SESSION_FILE.exists() and not renovar_sessao:
-        contexto_opcoes["storage_state"] = str(SESSION_FILE)
+    if session_file.exists() and not renovar_sessao:
+        contexto_opcoes["storage_state"] = str(session_file)
     if not headless:
         contexto_opcoes["no_viewport"] = True
 
@@ -201,7 +202,14 @@ def _esperar_app(page, timeout_ms: int, intervalo: float = 1.5) -> bool:
     return False
 
 
-def garantir_login(context, page, permitir_login_manual: bool = True) -> None:
+def garantir_login(
+    context,
+    page,
+    permitir_login_manual: bool = True,
+    email: str = "",
+    senha: str = "",
+    session_file: Path = SESSION_FILE,
+) -> None:
     """Reaproveita a sessao salva; se estiver expirada, espera o login manual."""
     # /contratos responde vazio mesmo logado; /dashboard é a rota confiável.
     ir_para(page, f"{BASE_URL}/dashboard", tentativas=1)
@@ -211,15 +219,15 @@ def garantir_login(context, page, permitir_login_manual: bool = True) -> None:
         print("✅ Sessão válida, seguindo sem login manual.")
         return
 
-    if not permitir_login_manual:
+    if not permitir_login_manual and not (email and senha):
         estado = _estado_pagina(page) or "sem resposta"
         raise SystemExit(
             "❌ Sessão do CGD expirada ou bloqueada "
             f"({estado}). Rode o extrator no PC do painel para entrar de novo."
         )
 
-    print("\n⚠️  Faça login MANUALMENTE na janela do navegador que abriu.")
-    print("   O script continua sozinho assim que você entrar.\n")
+    print("\n⚠️  Login do CGD necessário.")
+    print("   O navegador será usado para autenticar esta conta.\n")
     try:
         page.goto(f"{BASE_URL}/login", wait_until="domcontentloaded", timeout=TIMEOUT_NAV)
     except Exception:
@@ -239,6 +247,31 @@ def garantir_login(context, page, permitir_login_manual: bool = True) -> None:
     except Exception:
         pass
 
+    if email and senha:
+        try:
+            email_locator = page.locator(
+                "input[type=email], input[name*=email i], input[name*=usuario i], "
+                "input[name*=login i], input[placeholder*=email i]"
+            ).first
+            senha_locator = page.locator(
+                "input[type=password], input[name*=senha i], input[name*=password i]"
+            ).first
+            if email_locator.count() and senha_locator.count():
+                email_locator.fill(email)
+                senha_locator.fill(senha)
+                submit = page.locator(
+                    "button[type=submit], input[type=submit]"
+                ).first
+                if submit.count():
+                    submit.click()
+                else:
+                    senha_locator.press("Enter")
+                print("   Credenciais enviadas; aguardando validação do CGD...")
+            else:
+                print("   Campos de login não encontrados; faça o login manualmente.")
+        except Exception as exc:
+            print(f"   Não foi possível preencher o login automaticamente: {exc}")
+
     print("   ⏳ Aguardando login (até 5 minutos)...")
     if not _esperar_app(page, timeout_ms=TIMEOUT_LOGIN):
         estado = _estado_pagina(page) or "login não concluído"
@@ -246,8 +279,8 @@ def garantir_login(context, page, permitir_login_manual: bool = True) -> None:
 
     esperar(page, 1.5)
     try:
-        context.storage_state(path=str(SESSION_FILE))
-        print("✅ Login detectado! Sessão salva em cgd_session.json.")
+        context.storage_state(path=str(session_file))
+        print("✅ Login detectado! Sessão salva com segurança no servidor.")
     except Exception:
         print("✅ Login detectado!")
 
@@ -1510,6 +1543,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="não esperar login manual: falha na hora se a sessão expirou (usado pelo painel)",
     )
+    parser.add_argument("--session-file", help="arquivo da sessão Playwright desta conta")
     return parser.parse_args()
 
 
@@ -1547,6 +1581,9 @@ def arquivo_padrao(primeiro: str) -> str:
 
 def main() -> None:
     args = parse_args()
+    session_file = Path(args.session_file) if args.session_file else SESSION_FILE
+    email = os.environ.get("CGD_EMAIL", "").strip()
+    senha = os.environ.get("CGD_SENHA", "")
     contratos_diretos = [c.strip() for c in (args.contratos or []) if c.strip()]
 
     if contratos_diretos:
@@ -1570,9 +1607,19 @@ def main() -> None:
     with sync_playwright() as p:
         if args.headless:
             print("⚠️  Modo headless é bloqueado pelo Cloudflare do CGD; use sem --headless.")
-        browser, context, page = iniciar_navegador(p, args.headless, args.lento, args.nova_sessao)
+        browser, context, page = iniciar_navegador(
+            p, args.headless, args.lento, args.nova_sessao, session_file
+        )
         try:
-            garantir_login(context, page, permitir_login_manual=not args.sem_login_manual)
+            permitir_manual = not args.sem_login_manual
+            garantir_login(
+                context,
+                page,
+                permitir_login_manual=permitir_manual,
+                email=email,
+                senha=senha,
+                session_file=session_file,
+            )
             if contratos_diretos:
                 for cid in contratos_diretos:
                     try:
