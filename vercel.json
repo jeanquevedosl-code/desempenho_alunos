@@ -1,9 +1,13 @@
 {
-  "buildCommand": "",
-  "rewrites": [
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "painel.py"
+    }
+  },
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/api/index"
+      "src": "/(.*)",
+      "dest": "/api/index"
     }
   ]
 }
