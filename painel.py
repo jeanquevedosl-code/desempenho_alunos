@@ -757,21 +757,26 @@ def salvar_observacoes_relatorio(nome: str):
 def baixar_pdf(nome: str):
     html, _, _ = _dados_relatorio(nome)
     pdf = html.with_suffix(".pdf")
-    try:
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
-            page = browser.new_page()
-            page.goto(html.as_uri(), wait_until="load")
-            page.pdf(
-                path=str(pdf),
-                format="A4",
-                landscape=True,
-                print_background=True,
-                margin={"top": "12mm", "right": "8mm", "bottom": "12mm", "left": "8mm"},
-            )
-            browser.close()
-    except Exception as exc:
-        abort(500, description=f"Não foi possível gerar o PDF: {exc}")
+    pdf_atual = (
+        pdf.is_file()
+        and pdf.stat().st_mtime >= html.stat().st_mtime
+    )
+    if not pdf_atual:
+        try:
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.goto(html.as_uri(), wait_until="load")
+                page.pdf(
+                    path=str(pdf),
+                    format="A4",
+                    landscape=True,
+                    print_background=True,
+                    margin={"top": "12mm", "right": "8mm", "bottom": "12mm", "left": "8mm"},
+                )
+                browser.close()
+        except Exception as exc:
+            abort(500, description=f"Não foi possível gerar o PDF: {exc}")
     return send_from_directory(RELATORIOS, pdf.name, as_attachment=True)
 
 
