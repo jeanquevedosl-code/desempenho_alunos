@@ -8,7 +8,7 @@ Uso:
     python painel_online.py
 
 O link publico e temporario (muda a cada vez que este script e iniciado) e fica
-salvo em painel_url.txt. A senha e a mesma de painel_senha.txt.
+salvo em painel_url.txt. O painel principal funciona sem senha.
 """
 
 from __future__ import annotations
