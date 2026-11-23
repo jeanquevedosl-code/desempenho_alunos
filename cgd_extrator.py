@@ -1469,6 +1469,15 @@ def salvar_html(cursos: list[Curso], erros: list[dict], arquivo: str) -> None:
             border-radius: 10px; padding: 14px 18px; }}
   .erros h2 {{ font-size: 15px; margin: 0 0 8px; }}
   .erros ul {{ margin: 0; padding-left: 20px; }}
+  .acoes-relatorio {{ display: flex; align-items: center; gap: 8px;
+                      margin: 14px 32px 0; }}
+  .acoes-relatorio a, .acoes-relatorio button {{ background: #fff; color: #2F5496;
+                      border: 1px solid #cfd5df; border-radius: 8px; padding: 8px 12px;
+                      font: 600 13px/1.2 -apple-system, "Segoe UI", sans-serif;
+                      text-decoration: none; cursor: pointer; }}
+  @media print {{
+    .acoes-relatorio {{ display: none; }}
+  }}
 </style>
 </head>
 <body>
@@ -1476,6 +1485,11 @@ def salvar_html(cursos: list[Curso], erros: list[dict], arquivo: str) -> None:
   <h1>Desempenho de alunos</h1>
   <p>Gerado em {gerado} · {len(alunos)} aluno(s) · {len(cursos)} curso(s)</p>
 </header>
+<nav class="acoes-relatorio" id="acoes-relatorio" aria-label="Acoes do relatorio">
+  <a id="acao-observacoes" href="#">Observações</a>
+  <a id="acao-excel" href="#">Baixar Excel</a>
+  <a id="acao-pdf" href="#">Baixar PDF</a>
+</nav>
 <main>
   <section class="cards">{cards}</section>
   <div class="tabela">
@@ -1490,6 +1504,20 @@ def salvar_html(cursos: list[Curso], erros: list[dict], arquivo: str) -> None:
   </div>
   {bloco_erros}
 </main>
+<script>
+(() => {{
+  const caminho = window.location.pathname;
+  if (!window.location.protocol.startsWith("http")) {{
+    document.getElementById("acoes-relatorio").style.display = "none";
+    return;
+  }}
+  const nomeHtml = decodeURIComponent(caminho.split("/").pop());
+  const nomeBase = nomeHtml.replace(/\.html$/i, "");
+  document.getElementById("acao-observacoes").href = "/observacoes/" + encodeURIComponent(nomeHtml);
+  document.getElementById("acao-excel").href = "/baixar/" + encodeURIComponent(nomeBase + ".xlsx");
+  document.getElementById("acao-pdf").href = "/pdf/" + encodeURIComponent(nomeHtml);
+}})();
+</script>
 </body>
 </html>
 """

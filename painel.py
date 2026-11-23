@@ -666,8 +666,26 @@ def _arquivo_seguro(nome: str) -> Path:
 @app.get("/ver/<path:nome>")
 @requer_login
 def ver_relatorio(nome: str):
-    _arquivo_seguro(nome)
-    resposta = send_from_directory(RELATORIOS, nome)
+    html = _arquivo_seguro(nome)
+    documento = html.read_text(encoding="utf-8")
+    nome_base = html.stem
+    barra = f"""
+<nav class="acoes-relatorio" aria-label="Acoes do relatorio"
+     style="display:flex;gap:8px;align-items:center;margin:14px 32px 0">
+  <a href="{url_for('editar_observacoes', nome=html.name)}"
+     style="background:#fff;color:#2F5496;border:1px solid #cfd5df;border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:600">Observações</a>
+  <a href="{url_for('baixar', nome=nome_base + '.xlsx')}"
+     style="background:#fff;color:#2F5496;border:1px solid #cfd5df;border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:600">Baixar Excel</a>
+  <a href="{url_for('baixar_pdf', nome=html.name)}"
+     style="background:#fff;color:#2F5496;border:1px solid #cfd5df;border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:600">Baixar PDF</a>
+</nav>
+"""
+    if "</header>" in documento:
+        documento = documento.replace("</header>", "</header>" + barra, 1)
+    else:
+        documento = documento.replace("<body>", "<body>" + barra, 1)
+    resposta = app.make_response(documento)
+    resposta.headers["Content-Type"] = "text/html; charset=utf-8"
     resposta.headers["Cache-Control"] = "no-store"
     return resposta
 
