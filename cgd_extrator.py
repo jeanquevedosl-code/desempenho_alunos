@@ -1182,7 +1182,7 @@ def salvar_excel(cursos: list[Curso], erros: list[dict], arquivo: str) -> None:
     headers = [
         "Aluno", "Contrato", "Curso", "Tipo", "Início", "Expiração",
         "Último Acesso", "E-mail", "Status", "Seção",
-        "Progresso", "Itens", "Nota", "Situação", "Acessos", "Tempo",
+        "Progresso", "Aulas", "Nota", "Situação", "Acessos", "Tempo",
         "Carga Ideal", "Cumprimento", "Diferença", "Situação da Carga",
         "Observações", "Desempenho (URL)",
     ]
@@ -1496,7 +1496,7 @@ def salvar_html(cursos: list[Curso], erros: list[dict], arquivo: str) -> None:
     <table>
       <thead><tr>
         {th_aluno}<th>Curso</th><th>Status</th>
-        <th>Progresso</th><th>Itens</th><th>Nota</th><th>Situação</th><th>Acessos</th>
+        <th>Progresso</th><th>Aulas</th><th>Nota</th><th>Situação</th><th>Acessos</th>
         <th>Carga horária</th><th>Observações</th><th></th>
       </tr></thead>
       <tbody>{linhas}</tbody>
