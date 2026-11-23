@@ -67,7 +67,10 @@ def carregar_config() -> dict:
         except Exception:
             pass
     cfg = {"secret": secrets.token_hex(32), "exigir_senha": False}
-    CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    try:
+        CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    except OSError:
+        pass
     return cfg
 
 
@@ -77,7 +80,10 @@ def senha_atual() -> str:
         if senha:
             return senha
     senha = "cgd-" + secrets.token_hex(3)
-    SENHA_FILE.write_text(senha + "\n", encoding="utf-8")
+    try:
+        SENHA_FILE.write_text(senha + "\n", encoding="utf-8")
+    except OSError:
+        pass
     return senha
 
 
@@ -161,7 +167,14 @@ def _worker() -> None:
             job["inicio"] = agora()
         salvar_jobs()
 
-        RELATORIOS.mkdir(parents=True, exist_ok=True)
+        try:
+            RELATORIOS.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            job["status"] = "erro"
+            job["erro"] = "Geração indisponível nesta hospedagem. Use o painel local."
+            salvar_jobs()
+            FILA.task_done()
+            continue
         carimbo = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         saida = RELATORIOS / f"desempenho_{slug(job['nomes'][0])}_{carimbo}.xlsx"
 
