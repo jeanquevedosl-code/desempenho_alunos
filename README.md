@@ -69,7 +69,7 @@ que passa pelo Cloudflare). O painel é só a porta de entrada.
 python painel.py            # http://127.0.0.1:8000
 
 # acesso somente local (duplo clique no .bat)
-.\INICIAR_PAINEL_ONLINE.bat # abre http://127.0.0.1:8000
+.\INICIAR_PAINEL_LOCAL.bat # abre http://127.0.0.1:8000
 ```
 
 - **Acesso:** o painel principal é aberto sem senha.
@@ -77,7 +77,10 @@ python painel.py            # http://127.0.0.1:8000
   As credenciais são usadas em memória para o job e não são gravadas.
 - **Uso interno:** o painel fica disponível somente em
   `http://127.0.0.1:8000` neste computador.
-- **Abrir pelo Windows:** dê duplo clique em `INICIAR_PAINEL_ONLINE.bat`.
+- **Abrir pelo Windows:** dê duplo clique em `INICIAR_PAINEL_LOCAL.bat`.
+- **Observações:** use o botão “Observações” em cada relatório pronto. Elas são
+  gravadas no HTML, no Excel e no JSON correspondentes.
+- **PDF:** use o botão “Baixar PDF” ou “PDF” para baixar uma cópia em PDF.
 - **O que a pessoa faz:** digita os nomes (um por linha, até 20), clica em
   *Gerar relatório*, acompanha o status e abre/baixa o HTML e o Excel.
 - **Fila:** um trabalho por vez (o Chrome é único). O histórico fica em

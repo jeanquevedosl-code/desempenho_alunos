@@ -23,6 +23,7 @@ import threading
 import unicodedata
 import hashlib
 import os
+from dataclasses import asdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from queue import Queue
@@ -37,6 +38,7 @@ from flask import (
     session,
     url_for,
 )
+from playwright.sync_api import sync_playwright
 
 BASE = Path(__file__).resolve().parent
 RELATORIOS = BASE / "relatorios"
@@ -436,6 +438,8 @@ JOBS_HTML = """
       <td class="acoes">
         {% if job.status == 'ok' %}
           {% if job.html %}<a class="botao secundario" href="{{ url_for('ver_relatorio', nome=job.html) }}" target="_blank">Abrir relatório</a>{% endif %}
+          {% if job.html %}<a class="botao secundario" href="{{ url_for('editar_observacoes', nome=job.html) }}">Observações</a>{% endif %}
+          {% if job.html %}<a class="botao" href="{{ url_for('baixar_pdf', nome=job.html) }}">Baixar PDF</a>{% endif %}
           <a class="botao" href="{{ url_for('baixar', nome=job.arquivo) }}">Excel</a>
         {% elif job.status == 'erro' %}
           <span class="dica">{{ job.erro or "Falhou" }}</span>
@@ -464,6 +468,8 @@ SALVOS_HTML = """
       <td class="quando">{{ a.data }}</td>
       <td class="acoes">
         {% if a.html %}<a class="botao secundario" href="{{ url_for('ver_relatorio', nome=a.html) }}" target="_blank">Abrir</a>{% endif %}
+        {% if a.html %}<a class="botao secundario" href="{{ url_for('editar_observacoes', nome=a.html) }}">Observações</a>{% endif %}
+        {% if a.html %}<a class="botao" href="{{ url_for('baixar_pdf', nome=a.html) }}">PDF</a>{% endif %}
         {% if a.xlsx %}<a class="botao secundario" href="{{ url_for('baixar', nome=a.xlsx) }}">Excel</a>{% endif %}
       </td>
     </tr>
@@ -671,6 +677,102 @@ def ver_relatorio(nome: str):
 def baixar(nome: str):
     _arquivo_seguro(nome)
     return send_from_directory(RELATORIOS, nome, as_attachment=True)
+
+
+OBSERVACOES_HTML = """
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observações — Desempenho CGD</title><style>""" + ESTILO + """
+.observacao { width: 100%; min-height: 72px; }
+.curso { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #eef0f4; }
+.curso h3 { margin: 0 0 4px; font-size: 15px; }
+.curso p { margin: 0 0 8px; color: #5b6472; font-size: 13px; }
+</style></head><body>
+<header><div><h1>Observações do relatório</h1><p>{{ titulo }}</p></div></header>
+<main><div class="card">
+<form method="post">
+{% for item in cursos %}
+<div class="curso">
+  <h3>{{ item.aluno }} — {{ item.curso }}</h3>
+  <textarea class="observacao" name="observacao_{{ loop.index0 }}" placeholder="Digite uma observação">{{ item.observacao }}</textarea>
+</div>
+{% endfor %}
+<button type="submit">Salvar observações</button>
+<a class="botao secundario" href="{{ url_for('ver_relatorio', nome=nome_html) }}">Voltar ao relatório</a>
+</form></div></main></body></html>
+"""
+
+
+def _dados_relatorio(nome_html: str) -> tuple[Path, Path, dict]:
+    html = _arquivo_seguro(nome_html)
+    if html.suffix.lower() != ".html":
+        abort(404)
+    dados = html.with_suffix(".json")
+    if not dados.is_file():
+        abort(404)
+    try:
+        payload = json.loads(dados.read_text(encoding="utf-8"))
+    except Exception:
+        abort(404)
+    if not isinstance(payload, dict) or not isinstance(payload.get("cursos"), list):
+        abort(404)
+    return html, dados, payload
+
+
+@app.get("/observacoes/<path:nome>")
+@requer_login
+def editar_observacoes(nome: str):
+    html, _, payload = _dados_relatorio(nome)
+    return render_template_string(
+        OBSERVACOES_HTML,
+        titulo=html.stem.replace("_", " "),
+        nome_html=html.name,
+        cursos=payload["cursos"],
+    )
+
+
+@app.post("/observacoes/<path:nome>")
+@requer_login
+def salvar_observacoes_relatorio(nome: str):
+    html, dados, payload = _dados_relatorio(nome)
+    from cgd_extrator import Curso, salvar_excel, salvar_html
+
+    cursos = []
+    for indice, item in enumerate(payload["cursos"]):
+        curso = Curso(**item)
+        curso.observacao = (request.form.get(f"observacao_{indice}") or "").strip()
+        cursos.append(curso)
+
+    payload["cursos"] = [asdict(curso) for curso in cursos]
+    dados.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    salvar_html(cursos, payload.get("erros", []), str(html))
+    xlsx = html.with_suffix(".xlsx")
+    salvar_excel(cursos, payload.get("erros", []), str(xlsx))
+    return redirect(url_for("ver_relatorio", nome=html.name))
+
+
+@app.get("/pdf/<path:nome>")
+@requer_login
+def baixar_pdf(nome: str):
+    html, _, _ = _dados_relatorio(nome)
+    pdf = html.with_suffix(".pdf")
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(html.as_uri(), wait_until="load")
+            page.pdf(
+                path=str(pdf),
+                format="A4",
+                landscape=True,
+                print_background=True,
+                margin={"top": "12mm", "right": "8mm", "bottom": "12mm", "left": "8mm"},
+            )
+            browser.close()
+    except Exception as exc:
+        abort(500, description=f"Não foi possível gerar o PDF: {exc}")
+    return send_from_directory(RELATORIOS, pdf.name, as_attachment=True)
 
 
 @app.get("/saude")
