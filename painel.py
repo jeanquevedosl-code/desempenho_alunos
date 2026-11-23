@@ -747,6 +747,9 @@ def salvar_observacoes_relatorio(nome: str):
     payload["cursos"] = [asdict(curso) for curso in cursos]
     dados.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     salvar_html(cursos, payload.get("erros", []), str(html))
+    pdf = html.with_suffix(".pdf")
+    if pdf.exists():
+        pdf.unlink()
     xlsx = html.with_suffix(".xlsx")
     salvar_excel(cursos, payload.get("erros", []), str(xlsx))
     return redirect(url_for("ver_relatorio", nome=html.name))
@@ -757,11 +760,7 @@ def salvar_observacoes_relatorio(nome: str):
 def baixar_pdf(nome: str):
     html, _, _ = _dados_relatorio(nome)
     pdf = html.with_suffix(".pdf")
-    pdf_atual = (
-        pdf.is_file()
-        and pdf.stat().st_mtime >= html.stat().st_mtime
-    )
-    if not pdf_atual:
+    if not pdf.is_file():
         try:
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
