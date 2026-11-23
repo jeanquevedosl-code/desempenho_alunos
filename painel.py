@@ -669,14 +669,21 @@ def ver_relatorio(nome: str):
     html = _arquivo_seguro(nome)
     documento = html.read_text(encoding="utf-8")
     nome_base = html.stem
+    if 'id="acoes-relatorio"' in documento:
+        resposta = app.make_response(documento)
+        resposta.headers["Content-Type"] = "text/html; charset=utf-8"
+        resposta.headers["Cache-Control"] = "no-store"
+        return resposta
     barra = f"""
 <nav class="acoes-relatorio" aria-label="Acoes do relatorio"
      style="display:flex;gap:8px;align-items:center;margin:14px 32px 0">
   <a href="{url_for('editar_observacoes', nome=html.name)}"
      style="background:#fff;color:#2F5496;border:1px solid #cfd5df;border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:600">Observações</a>
   <a href="{url_for('baixar', nome=nome_base + '.xlsx')}"
+     download
      style="background:#fff;color:#2F5496;border:1px solid #cfd5df;border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:600">Baixar Excel</a>
   <a href="{url_for('baixar_pdf', nome=html.name)}"
+     download
      style="background:#fff;color:#2F5496;border:1px solid #cfd5df;border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:600">Baixar PDF</a>
 </nav>
 """

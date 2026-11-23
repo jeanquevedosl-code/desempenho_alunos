@@ -1487,8 +1487,8 @@ def salvar_html(cursos: list[Curso], erros: list[dict], arquivo: str) -> None:
 </header>
 <nav class="acoes-relatorio" id="acoes-relatorio" aria-label="Acoes do relatorio">
   <a id="acao-observacoes" href="#">Observações</a>
-  <a id="acao-excel" href="#">Baixar Excel</a>
-  <a id="acao-pdf" href="#">Baixar PDF</a>
+  <a id="acao-excel" href="#" download>Baixar Excel</a>
+  <a id="acao-pdf" href="#" download>Baixar PDF</a>
 </nav>
 <main>
   <section class="cards">{cards}</section>
