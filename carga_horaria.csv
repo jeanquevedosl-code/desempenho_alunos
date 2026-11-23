@@ -1,0 +1,21 @@
+# Carga horaria ideal de cada curso, em horas.
+#
+# Formato: nome do curso ; horas   (uma linha por curso)
+# - Linhas iniciadas com # sao ignoradas.
+# - O nome pode ser parcial ou conter pequenos erros: "Word 2019" casa com
+#   "Word 2019 - Avançado", e vice-versa.
+# - O curso que NAO existir aqui simplesmente fica sem comparativo.
+#
+# Depois de editar, nao precisa rodar nada: o painel aplica na proxima geracao
+# (e ao abrir "Observações", que regenera o relatorio).
+curso;horas
+Windows 10 - V1809;
+Word 2019;
+Excel 2019;
+PowerPoint 2019;
+Internet V7;
+Inteligência Emocional V5;
+Photoshop 2022;
+Canva V2;
+CorelDRAW 2021;
+Photoshop 2022 para Fotografia;
